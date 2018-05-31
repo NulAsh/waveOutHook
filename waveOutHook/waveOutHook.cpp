@@ -84,8 +84,10 @@ WaveHeader makeWaveHeader(int const sampleRate,
 
 char *wavdir;
 std::vector<v_elem> vlphwo;
-MMRESULT WINAPI myWaveOutOpenHook(LPHWAVEOUT phwo, UINT_PTR uDeviceID, LPWAVEFORMATEX pwfx,	DWORD_PTR dwCallback, DWORD_PTR dwCallbackInstance, DWORD fdwOpen)
+MMRESULT WINAPI myWaveOutOpenHook(LPHWAVEOUT phwo, UINT_PTR uDeviceID, LPWAVEFORMATEX pwfx, DWORD_PTR dwCallback, DWORD_PTR dwCallbackInstance, DWORD fdwOpen)
 {
+	if (fdwOpen & WAVE_FORMAT_QUERY)
+		return waveOutOpen(phwo, uDeviceID, pwfx, dwCallback, dwCallbackInstance, fdwOpen);
 	v_elem vel;
 	char tms[15];
 	time_t rawtime;
@@ -102,10 +104,12 @@ MMRESULT WINAPI myWaveOutOpenHook(LPHWAVEOUT phwo, UINT_PTR uDeviceID, LPWAVEFOR
 	fname += ".wav";
 	wh = makeWaveHeader(pwfx->nSamplesPerSec, pwfx->nChannels, pwfx->wBitsPerSample);
 	MMRESULT ret = waveOutOpen(phwo, uDeviceID, pwfx, dwCallback, dwCallbackInstance, fdwOpen);
-	vel.hwo = *phwo;
-	fopen_s(&vel.file, fname.c_str(), "wb");
-	fwrite(&wh, sizeof wh, 1, vel.file);
-	vlphwo.push_back(vel);
+	if (phwo) {
+		vel.hwo = *phwo;
+		fopen_s(&vel.file, fname.c_str(), "wb");
+		fwrite(&wh, sizeof wh, 1, vel.file);
+		vlphwo.push_back(vel);
+	}
 	return ret;
 }
 MMRESULT WINAPI myWaveOutWriteHook(HWAVEOUT hwo, LPWAVEHDR pwh, UINT cbwh)
